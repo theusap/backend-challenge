@@ -1,6 +1,6 @@
-# Descrição
+# Serviço para validação de senha
 
-Considere uma senha sendo válida quando a mesma possuir as seguintes definições:
+Esse projeto foi idealizado para realizar a validação de senha seguindo as definições.
 
 - Nove ou mais caracteres
 - Ao menos 1 dígito
@@ -9,60 +9,109 @@ Considere uma senha sendo válida quando a mesma possuir as seguintes definiçõ
 - Ao menos 1 caractere especial
   - Considere como especial os seguintes caracteres: !@#$%^&*()-+
 - Não possuir caracteres repetidos dentro do conjunto
+- Espaços em branco não devem ser considerados como caracteres válidos.
 
-Exemplo:  
+# Pré Requisitos
+Para que seja possível rodar essa aplicação é necessário atender alguns requisitos.
 
-```c#
-IsValid("") // false  
-IsValid("aa") // false  
-IsValid("ab") // false  
-IsValid("AAAbbbCc") // false  
-IsValid("AbTp9!foo") // false  
-IsValid("AbTp9!foA") // false
-IsValid("AbTp9 fok") // false
-IsValid("AbTp9!fok") // true
+- Java 11
+- Maven 3
+
+# Compilando e inicializando
+É necessário primeiramente realizarmos a execução do Maven conforme o exemplo abaixo:
+  
+```bash
+mvn clean install 
+```
+Certifique-se de que o repositório do Maven está corretamente configurado.
+
+Para inicializar a aplicação pela IDE execute a aplicação pela classe  `ChallengeApplication.java`
+
+# Execução da API
+
+Após a inicialização do projeto é possível utilizar a API pela URL: 
+
+```bash
+http://localhost:8080/senha
+```
+Para realizar a validação da senha é necessário executar um **POST**, o corpo da requisição deve conter a senha que será validada, a requisição deve estar no formato json conforme exemplo abaixo.
+
+**Exemplo Resquet:**
+
+```
+{
+  "senha" : "AbTp9@fok"
+}
 ```
 
-> **_Nota:_**  Espaços em branco não devem ser considerados como caracteres válidos.
+**Exemplo Response:**
 
-## Problema
+```
+{
+  "senhaValida": true
+}
+```
 
-Construa uma aplicação que exponha uma api web que valide se uma senha é válida.
+Podemos executar essa requisição pelo prompt de comando ou utilizar algum aplicativo como o Postman.
 
-Input: Uma senha (string).  
-Output: Um boolean indicando se a senha é válida.
+```bash
+curl -X POST "http://localhost:8080/senha" -H "accept: application/json" -H "Content-Type: application/json" -d "{\"senha\": \"AbTp9@fok\"}"
 
-Embora nossas aplicações sejam escritas em Kotlin e C# (.net core), você não precisa escrever sua solução usando elas. Use a linguagem de programação que considera ter mais conhecimento.
+```
+![](src/main/resources/imagens/ValidacaoDeSenhaTrue.PNG)
 
-## Pontos que daremos maior atenção
+![](src/main/resources/imagens/ValidacaoDeSenhaFalse.PNG)
 
-- Testes de unidade / integração
-- Abstração, acoplamento, extensibilidade e coesão
-- Design de API
-- Clean Code
-- SOLID
-- Documentação da solução no *README* 
+# Desenvolvimento da API
 
-## Pontos que não iremos avaliar
+Após entender qual era a ideia do desafio a primeira coisa foi definir como realizaria a validação da senha, o método escolhido foi através de expressões regulares por ser uma forma mais simples de validar e identificar caracteres.
 
-- docker file
-- scripts ci/cd
-- coleções do postman ou ferramentas para execução
+A API  foi estruturada da seguinte maneira:
 
-### Sobre a documentação
+#### Controller
 
-Nesta etapa do processo seletivo queremos entender as decisões por trás do código, portanto é fundamental que o *README* tenha algumas informações referentes a sua solução.
+ **SenhaController** é responsável por tratar as requisições da aplicação.
 
-Algumas dicas do que esperamos ver são:
+Caso a senha tenha sido validada com sucesso a API irá retornar ` HttpStatus.OK`
 
-- Instruções básicas de como executar o projeto;
-- Detalhes sobre a sua solução, gostariamos de saber qual foi seu racional nas decisões;
-- Caso algo não esteja claro e você precisou assumir alguma premissa, quais foram e o que te motivou a tomar essas decisões.
 
-## Como esperamos receber sua solução
+Caso a senha não seja válida a API retorna ` HttpStatus.UNAUTHORIZED`
 
-Esta etapa é eliminatória, e por isso esperamos que o código reflita essa importância.
 
-Se tiver algum imprevisto, dúvida ou problema, por favor entre em contato com a gente, estamos aqui para ajudar.
+Caso o cliente não informe uma senha a API retorna ` HttpStatus.BAD_REQUEST`
 
-Nos envie o link de um repo público com a sua solução.
+
+Caso ocorra algum erro  interno  não esperado pela API ` HttpStatus.INTERNAL_SERVER_ERROR`
+
+
+#### Domain
+
+ **SenhaResquet**  - representação dos parâmetros de entrada da API.
+
+ **SenhaResponse** - representação dos parâmetros de saída da API.
+
+**Obs:** Utilizei objetos para realizar a representação pois considero mais fácil realizar a evolução da API dessa forma por exemplo, hoje não temos uma mensagem que indique para o usuário em qual erro de validação a API pode estar parando, podemos adicionar um campo com essa mensagem no response.
+
+```
+{
+  "senhaValida": false ,
+  "mensagem" : "A senha não pode  possuir caracteres repetidos"
+}
+```
+#### Service
+
+Tão importante quanto as regras de validação é a maneira como elas serão executadas, após definir que cada regra de validação seria executada separadamente foi definida a seguinte abordagem para esse aplicação, criei a classe **SenhaService** que ficou responsável por validar se a senha tem os requisitos mínimos "não ser nula ou vazia" e realizar a chamada das demais validações que implementam a interface **ValidarSenhaService**.
+
+#### Validadores
+
+Para uma melhor manutenção, evolução e testes da API as regras de validação foram separadas em 
+classes diferentes, cada uma responsável por validar uma regra diferente de validação da senha de acordo com a sua respectiva expressão regular.
+
+Caso seja necessário adicionar uma nova regra de validação basta criar uma nova classe implementando a interface **ValidarSenhaService** e sobrescrever o método **validar()** com a nova validação.
+
+#### Exception
+
+**ValidarSenhaException** utilizado para tratar as exceções da validação aplicação.
+
+**SenhaException** utilizado para tratar as demais exceções da aplicação.
+
